@@ -7,6 +7,7 @@ import os
 import pandas as pd
 import positioninfo
 import pygetwindow as gw
+from . import config
 
 def range_click(posinfo):
     position, range = posinfo
@@ -33,6 +34,7 @@ def check(left,top,right,bottom):
         return True
     
 def invest(rank):
+    global res, savedir
     if not check(x1,y1,x2,y2):
         return False
     if rank>=5:
@@ -41,7 +43,11 @@ def invest(rank):
         r = rank
     range_click(posdict['r{}'.format(r)])
     bias_sleep(0.7,0.5)
-    left, top, dx, dy = auto.locateOnScreen(dir+'ref_icon/nickname_1600.png',confidence=0.8)
+    temp = auto.locateOnScreen(dir+'ref_icon/nickname_1600.png',confidence=0.8)
+    if temp is None:
+        return -1
+    else:
+        left, top, dx, dy = temp
     if not check(x1,y1,x2,y2):
         return False
     range_click([[left+dx//2,top+dy//2],[dx//2,dy//2]])
@@ -77,9 +83,28 @@ if x1<0:
 else:
     print(x1,y1,x2,y2)
 
-basedir = 'C:/Users/ikho7/Desktop/projects/rok_contribution/power_invest/'
+basedir = config.basedir
+res = config.res
+datadir = config.res
+kdnum = config.kdnum
+t0 = datetime.datetime.now()
+t = datetime.datetime.today()
+datestr = f'{t.year}{t.month:0>2}{t.day:0>2}'[2:]
+
+try:
+    os.mkdir(f'{datadir}kd{kdnum}')
+except:
+    print('왕국 폴더가 이미 있습니다')
+
+try:
+    os.mkdir(f'{datadir}kd{kdnum}/{datestr}')
+except:
+    print('날짜 폴더가 이미 있습니다')
+
+savedir = f'{datadir}kd{kdnum}/{datestr}'
+
 posdict, scsdict = positioninfo.returndict((1600,900))
-x0, y0, _, _ = auto.locateOnScreen(basedir+'ref_icon/power_1600.png',confidence=0.9)
+x0, y0, _, _ = auto.locateOnScreen(basedir+f'ref_icon/power_{res}.png',confidence=0.9)
 for p in posdict.keys():
     temp = posdict[p][0]
     x, y = temp[0]+x0, temp[1]+y0
@@ -90,15 +115,6 @@ for s in scsdict.keys():
     x, y = temp[0]+x0, temp[1]+y0
     scsdict[s] = (x,y,temp[2],temp[3])
 
-t0 = datetime.datetime.now()
-
-t = datetime.datetime.today()
-datestr = f'{t.year}{t.month:0>2}{t.day:0>2}'[2:]
-try:
-    os.mkdir(dir+'kd2038/'+datestr)
-except:
-    print('폴더가 이미 있습니다')
-savedir = dir+'kd2038/'+datestr
 
 nicks = pd.DataFrame(columns=['rank','name'])
 
@@ -108,7 +124,8 @@ range_click(posdict['rank'])
 bias_sleep(0.3,0.3)
 range_click(posdict['powerrank'])
 bias_sleep(1,0.5)
-for rank in range(1,301):
+
+for rank in range(1,config.maxrank+1):
     if rank%10==1:
         print(f'rank {rank}')
     try:
@@ -117,14 +134,15 @@ for rank in range(1,301):
     except:
         print(rank)
         #nicks = nicks.set_index('rank')
-        nicks.to_csv(dir+'kd2038/namelist_stopped.csv',encoding="utf-8-sig")
+        nicks.to_csv(datadir+f'kd{kdnum}/namelist_stopped.csv',encoding="utf-8-sig")
     if not nick:
         break
-
-###프로필 클릭 안되는 경우 잘 패스하도록 다시 짜야함
+    elif nick == -1:
+        auto.drag(5, -100, 0.5)
+        nicks = nicks.append({'rank':rank,'name':"**미접"},ignore_index=True)
 
 nicks = nicks.set_index('rank')
-nicks.to_csv(basedir+'kd2038/namelist.csv',encoding="utf-8-sig")
+nicks.to_csv(datadir+f'kd{kdnum}/namelist.csv',encoding="utf-8-sig")
 
 t1 = datetime.datetime.now()
 dt = t1-t0
