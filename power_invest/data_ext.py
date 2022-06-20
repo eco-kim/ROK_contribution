@@ -3,26 +3,35 @@ import pytesseract
 import cv2
 import re
 import numpy as np
-import pandas as pd
+import datetime
+from . import config
 
-dir = 'C:/Users/ikho7/Desktop/projects/rok_contribution/power_invest/kd2038/'
-date0 = '220511'
-namelist = pd.read_csv(dir+'namelist.csv')
+datadir = config.datadir
+kdnum = config.kdnum
+maxrank = config.maxrank
+
+namelist = pd.read_csv(f'{datadir}kd{kdnum}/namelist.csv')
 params = ['uid','power','t4kill','t5kill','death']
 
 threshdict = {'uid':130, 'power':150, 'death':90, 't4kill':50, 't5kill':50}
+langdict = {'uid':'rokuid','power':'eng','death':'rokdeath','t4kill':'rokkill','t5kill':'rokkill'}
 
-#errdict = {'T':'7', 'A':'8','B':'8','$':'5','F':'7','L':'1','TF':'7'}
+df = pd.DataFrame(columns=['name','uid','power','t4kill','t5kill','death'])
 
-df = pd.DataFrame(columns=['uid','name','power','t4kill','t5kill','death'])
-df2 = pd.DataFrame(columns=['rank','param','text'])
-for j in range(1,301):
+t0 = datetime.datetime.now()
+t = datetime.datetime.today()
+datestr = f'{t.year}{t.month:0>2}{t.day:0>2}'[2:]
+
+for j in range(1,maxrank+1):
     if j%30==1:
         print(j)
     data = {}
     data['name'] = list(namelist[namelist['rank']==j]['name'])[0]
     for p in params:
-        im = cv2.imread(dir+date0+f'/{j:0>4}_{p}.png',cv2.IMREAD_GRAYSCALE)
+        im = cv2.imread(f'{datadir}kd{kdnum}/screenshots/{datestr}/{j:0>4}_{p}.png',cv2.IMREAD_GRAYSCALE)
+        if im is None:
+            check = -1
+            break
         if (p=='t4kill')|(p=='t5kill'):
             im2 = np.zeros((34,130), dtype='uint8')
             im2[:,:8] = 229
@@ -30,13 +39,9 @@ for j in range(1,301):
             im = im2
             im = 255 - im
         _, im = cv2.threshold(im, 0, threshdict[p],cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU) 
-        text = pytesseract.image_to_string(im, config='--psm 7')
+        text = pytesseract.image_to_string(im, lang=langdict[p],config='--psm 7')
         num = re.findall('\d',text)
-        comma = re.findall(',',text)
-        if len(num)+len(comma)+1!=len(text):
-            df2 = df2.append({'rank':j,'param':p,'text':text}, ignore_index=True)
         data[p] = ''.join(num)
     df = df.append(data, ignore_index=True)
 
-df.to_csv(dir+f'{date0}data.csv',encoding="utf-8-sig")
-df2.to_csv(dir+f'{date0}data_qc.csv',encoding="utf-8-sig")
+df.to_csv(f'{datadir}kd{kdnum}/csv/{datestr}data.csv',encoding="utf-8-sig")
