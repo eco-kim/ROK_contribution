@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 from sqlalchemy import create_engine
-from resource.common import config
 import bcrypt
 import jwt
 from datetime import datetime, timedelta
@@ -9,7 +8,7 @@ def create_app(test_config = None):
     app = Flask(__name__)
 
     if test_config is None:
-        app.config.from_profile(config)
+        app.config.from_pyfile("resource/common/config.py")
     else:
         app.config.update(test_config)
 
@@ -20,18 +19,18 @@ def create_app(test_config = None):
 
 app = create_app()
 
-@app.route("/sing-up", method=['POST'])
+@app.route("/sign-up", methods=['POST'])
 def sign_up():
     new_user = request.json
     new_user['password'] = bcrypt.hashpw(
         new_user['password'].encode('UTF-8'),
         bcrypt.gensalt()
-    )
-    app.database.execute(f"INSERT INTO users (username, hashed_password, kdnumber) VALUES ('{new_user['username']}', '{new_user['password']}', {new_user['kdnumber']}")
+    ).hex()
+    app.database.execute(f"INSERT INTO users (username, hashed_password, kdnumber) VALUES ('{new_user['username']}', '{new_user['password']}', {new_user['kdnumber']})")
     ##아이디 중복확인 하는것 추가해야함
     return jsonify(new_user)
 
-@app.route("/login", method=['POST'])
+@app.route("/login", methods=['POST'])
 def login():
     credential = request.json
     username = credential['username']
@@ -52,3 +51,6 @@ def login():
         })
     else:
         return '', 401
+
+if __name__ == '__main__':
+    app.run()
