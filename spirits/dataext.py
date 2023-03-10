@@ -4,6 +4,7 @@ import numpy as np
 import re
 from pytesseract import *
 import pandas as pd
+import matplotlib.pyplot as plt
 
 def boxcut(image):  ##영령전 흰 박스 모서리좌표 구하는 함수
     rawG = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -75,36 +76,52 @@ def iconcut(boximage):
     return icons, nums
 
 def tier(icon):
-    global t5_template, t4_template
+    global templates
     icon = cv2.resize(icon, (121,134))
-    match = cv2.matchTemplate(t5_template,icon[10:70,10:-10],method=cv2.TM_CCOEFF_NORMED)
-    if np.max(match)>0.85:
-        return 't5'
-    else:
-        match = cv2.matchTemplate(t4_template,icon[10:70,10:-10],method=cv2.TM_CCOEFF_NORMED)
+    names = ['t5','t5_seige','t4','t4_seige']
+    for j in range(4):
+        match = cv2.matchTemplate(templates[j],icon[10:70,10:-10],method=cv2.TM_CCOEFF_NORMED)
         if np.max(match)>0.85:
-            return 't4'
-        else:
-            return 't3'
+            return names[j]
+    return 't3'
 
 def numread(numim):
     text = pytesseract.image_to_string(numim, lang='eng', config='--psm 7')
     text = ''.join(re.findall('\d+',text))
-    return int(text)
+    try:
+        num = int(text)
+    except:
+        return False
+    return num
 
-basedir = 'C:/Users/ikho7/Desktop/projects/rok_contribution/spirits/'
-datadf = pd.DataFrame(columns=['uid','t5','t4','t3under'])
-subdf = pd.DataFrame(columns=['uid','main_uid','t5','t4','t3under'])
-t5_template = cv2.imread(basedir+'t5_template.png')
-t4_template = cv2.imread(basedir+'t4_template.png')
+basedir = 'C:/Users/ikho7/Desktop/projects/rok_contribution/project/spirits/'
+datadf = pd.DataFrame(columns=['uid','t5_norm','t5_seige','t4_norm','t4_seige','t3under'])
+subdf = pd.DataFrame(columns=['uid','main_uid','t5_norm','t5_seige','t4_norm','t4_seige','t3under'])
+t5_template = cv2.imread(basedir+'t5_template.png')[:,:,::-1]
+t4_template = cv2.imread(basedir+'t4_template.png')[:,:,::-1]
+t5_seige = cv2.imread(basedir+'t5_seige.png')[:,:,::-1]
+t4_seige = cv2.imread(basedir+'t4_seige.png')[:,:,::-1]
+templates = [t5_template, t5_seige, t4_template, t4_seige]
 
-flist = glob.glob(basedir+'discord/screenshots/*')
-baselen = len(basedir+'discord/screenshots/')
+'''
+flist1 = glob.glob(basedir+'discord/screenshots/*')
+flist = []
+for f in flist1:
+    flist.append(f.split('/')[-1].split('\\')[-1])
+'''
+flist2 = glob.glob(basedir+'discord/screenshots/*')
+
+flist = []
+
+for f in flist2:
+    flist.append(f.replace('\\','/'))
+
+baselen = len(basedir+'discord/screenshots2/')
 nn = len(flist)
 print(f'전체 : {nn}개')
 
 for j,f in enumerate(flist):
-    fname = f[baselen:]
+    fname = f[baselen-1:]
     if fname[0]=='s':
         s0 = fname.find('_')
         s1 = fname.find('.')
@@ -124,14 +141,28 @@ for j,f in enumerate(flist):
         raw = cv2.imread(f)
     rawbox = boxcut(raw)
     icons, nums = iconcut(rawbox)
-    t5, t4, t3 = [],[],[]
+    t5, t4, t3, t5_seige, t4_seige = [],[],[],[],[]
     for i, icon in enumerate(icons):
-        globals()[tier(icon)].append(numread(nums[i]))
+        num = numread(nums[i])
+        if not num:
+            plt.imshow(nums[i])
+            plt.savefig(fname.split('.')[0]+'error'+str(i)+'.'+fname.split('.')[1])
+            num = 0
+        globals()[tier(icon)].append(num)
+    
+    if len(t5_seige)>1:
+        print(fname, ' t5')
+    
+    if len(t4_seige)>1:
+        print(fname, ' t4')
+
     if cc == 0:
-        datadf = datadf.append({'uid':uid,'t5':sum(t5),'t4':sum(t4),'t3under':sum(t3)},ignore_index=True)
+        datadf = datadf.append({'uid':uid,'t5_norm':sum(t5), 't5_seige':sum(t5_seige), 't4_norm':sum(t4), 
+        't4_seige':sum(t4_seige), 't3_under':sum(t3)}, ignore_index=True)
     else:
-        subdf = subdf.append({'uid':uid,'main_uid':mainid,'t5':sum(t5),'t4':sum(t4),'t3under':sum(t3)},ignore_index=True)
+        subdf = subdf.append({'uid':uid,'main_uid':mainid, 't5_norm':sum(t5), 't5_seige':sum(t5_seige), 't4_norm':sum(t4), 
+        't4_seige':sum(t4_seige), 't3_under':sum(t3)}, ignore_index=True)
     if j%20==0:
         print(j)
-        datadf.to_csv(f'{basedir}maindata.csv',encoding="utf-8-sig")
-        subdf.to_csv(f'{basedir}subdata.csv',encoding="utf-8-sig")
+datadf.to_csv(f'{basedir}maindata.csv',encoding="utf-8-sig")
+subdf.to_csv(f'{basedir}subdata.csv',encoding="utf-8-sig")

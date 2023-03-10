@@ -10,9 +10,9 @@ try:
 except:
     print("DB connect fail")
 
-dir = 'C:/Users/ikho7/Desktop/projects/rok_contribution/spirits/discord/screenshots/'
-namedf = pd.read_csv('C:/Users/ikho7/Desktop/projects/rok_contribution/spirits/namelist.csv')
-dciddf = pd.read_csv('C:/Users/ikho7/Desktop/projects/rok_contribution/spirits/dcidlist.csv')
+dir = 'C:/Users/ikho7/Desktop/projects/rok_contribution/project/spirits/discord/screenshots/'
+namedf = pd.read_csv('C:/Users/ikho7/Desktop/projects/rok_contribution/project/spirits/namelist.csv')
+dciddf = pd.read_csv('C:/Users/ikho7/Desktop/projects/rok_contribution/project/spirits/dcidlist.csv')
 game = discord.Game("스크린샷 수집")
 client = commands.Bot(command_prefix='!', status=discord.Status.online, 
     activity=discord.Game('test'))
@@ -28,10 +28,10 @@ async def on_ready():
 async def uid(ctx, uid):
     global namedf, dciddf
     uid = int(re.findall('\d+',uid)[0])
-#    kdid = ctx.guild.id   #어느 디스코드 서버인지 체크
+    kdid = ctx.guild.id   #어느 디스코드 서버인지 체크
     dcid = ctx.author   #디스코드 아이디 체크
     temp = namedf['nickname'][namedf['uid']==uid].values
-    if not temp:
+    if len(temp)==0:
         await ctx.send("uid를 다시 확인 해 주세요 (서버원 명단에 존재하지 않음)")
     else:
         nickname = temp[0]
@@ -39,6 +39,7 @@ async def uid(ctx, uid):
             f.write(f'{dcid},{uid},{nickname}\n')
         dciddf = dciddf.append({'dcid':dcid,'uid':uid,'nickname':nickname},ignore_index=True)
         await ctx.send(f"{nickname} {uid} : uid 등록완료")
+    
 
 @client.command(aliases=['제출','본캐','본계정'])
 async def spirit(ctx, *args):
@@ -54,7 +55,7 @@ async def spirit(ctx, *args):
     else:
         uid = int(re.findall('\d+',args[0])[0])
     attachment = ctx.message.attachments
-#    kdid = ctx.guild.id   #어느 디스코드 서버인지 체크 / 나중에 다른서버에도 서비스한다면 필요한부분. 
+    kdid = ctx.guild.id   #어느 디스코드 서버인지 체크 / 나중에 다른서버에도 서비스한다면 필요한부분. 
     dcid = ctx.author   #디스코드 아이디 체크    
     temp = namedf['nickname'][namedf['uid']==uid].values
     if not temp:
@@ -69,6 +70,7 @@ async def spirit(ctx, *args):
                 exten = fname.split('.')[-1]
                 await attach.save(fp=dir+str(uid)+'.'+exten)
             await ctx.send(f"{nickname} {uid} : 영령전 제출완료")
+    print(kdid)
 
 @client.command(aliases=['부캐','부계정'])
 async def sub(ctx, uid):
