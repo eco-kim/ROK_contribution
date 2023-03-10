@@ -2,3 +2,4 @@ server/resource/common/config.py
 server/resource/common/config.py
 spirits/images/*
 spirits/discord/screenshots/*
+spirits/discord/bot_info.json
